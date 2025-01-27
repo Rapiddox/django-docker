@@ -11,13 +11,14 @@ const getFiles = (): {[key: string]: string} => {
 
     files.forEach(filePath => {
         const paths = filePath.split(path.sep)
-        const filename = paths.pop()?.split('.').reverse().pop();
-        paths.reverse().pop()
-        paths.reverse()
+        const filename = paths.pop()?.split('.')?.reverse()?.pop();
 
         if (!filename) {
             throw new Error(`something is wrong in: ${filePath}`)
         }
+
+        paths.reverse().pop()
+        paths.reverse()
 
         const output = path.join(...paths, filename);
 
