@@ -1,0 +1,66 @@
+services:
+
+  python: &python
+    container_name: "app.python"
+    tty: true
+    stdin_open: true
+    environment:
+      - HOME
+    networks:
+      - traefik_proxy
+    volumes:
+      - .:/app
+    build:
+      context: .
+      dockerfile: .docker/python/Dockerfile
+      args:
+        PYTHON_VERSION: "3.13.1"
+
+  web:
+    container_name: "app.web"
+    <<: *python
+    entrypoint: [ "poetry", "run", "python", "manage.py", "runserver", "0.0.0.0:4321" ]
+    ports:
+      - "4321:80"
+    networks:
+      - traefik_proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.app_web.rule=Host(`app.core-local.com`)"
+      - "traefik.http.routers.app_web.service=svc_app_web"
+      - "traefik.http.services.svc_app_web.loadbalancer.server.port=4321"
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  mysql:
+    container_name: "app.mysql"
+    image: mysql:8.0.29
+    command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    environment:
+      MYSQL_DATABASE: app
+      MYSQL_ROOT_PASSWORD: password12345
+    volumes:
+      - ./.docker/mysql:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - traefik_proxy
+
+  node:
+    container_name: "app.node"
+    image: node:23.6.1
+    working_dir: /app
+    volumes:
+      - .:/app
+    networks:
+      - traefik_proxy
+
+networks:
+  traefik_proxy:
+    external: true
